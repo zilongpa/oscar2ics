@@ -336,6 +336,8 @@ const App = () => {
 
     const headIdx = allRows.findIndex(row => row[0] === "Title");
     const tailIdx = allRows.findIndex(row => row[0] === "Total Hours");
+    console.log("headIdx:", headIdx, "tailIdx:", tailIdx);
+    console.log("allRows:", allRows);
     if (headIdx == -1 || tailIdx == -1 || tailIdx <= headIdx) return;
 
     for (let i = headIdx - 1; i >= 0; i--) {
@@ -355,7 +357,10 @@ const App = () => {
 
     let i = 0;
     for (const row of validRows) {
-      if (row.length === 5 && row[0] !== "Title") {
+      if ((row.length === 5 || row.length === 6) && row[0] !== "Title") {
+        if (row.length === 6) {
+          row[5] = `${row[5]}${row[6]}`;
+        }
         i = 0;
         if (currentCourse) parsedCourses.push(currentCourse);
         currentDateStrings = row[4].split("-", 2).map(dateStr => dateStr.trim());
@@ -364,14 +369,17 @@ const App = () => {
           title: row[0],
           details: row[1]
         };
+        console.log("currentCourse:", currentCourse);
       } else {
         switch (i++) {
           case 0:
+            console.log("Processing day row:", row);
             if (currentCourse) {
               currentCourse.day = row[0].split(',').map(str => str.trim());
             }
             break;
           case 1:
+            console.log("Processing time row:", row);
             if (currentCourse) {
               const timeStrings = row.join('').split("-", 2).map(timeStr => timeStr.trim());
 
@@ -404,6 +412,7 @@ const App = () => {
             }
             break;
           case 2:
+            console.log("Processing location row:", row);
             if (currentCourse) {
               try {
                 [currentCourse.campus, currentCourse.location, currentCourse.room] = split3(row[0], ',').map(str => str.trim());
