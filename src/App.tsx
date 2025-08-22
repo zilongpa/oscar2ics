@@ -27,6 +27,14 @@ import {
 import { Button } from './components/ui/button';
 import { Label } from './components/ui/label';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
   Card,
   CardContent,
   CardDescription,
@@ -492,9 +500,51 @@ const App = () => {
         </CardHeader>
         <CardContent className="space-y-12">
           <div>
-            <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0 mb-6">
-              1. Upload your PDF schedule from OSCAR
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0">
+                1. Upload your PDF schedule from OSCAR
+              </h2>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="link" size="sm">
+                    Help
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>How to download your PDF schedule from OSCAR</DialogTitle>
+                    <DialogDescription>
+                      Follow these steps to get your schedule from OSCAR:
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="text-sm text-gray-600">
+                      <ol className="list-decimal list-inside space-y-2">
+                        <li>Log in to OSCAR</li>
+                        <li>Click "Student"</li>
+                        <li>Click "View Registration Information"</li>
+                        <li>Inside the "Look Up a Schedule" tab, select the current semester from the drop-down</li>
+                        <li>Click the print icon at the top right and save the PDF</li>
+                      </ol>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <img 
+                        src="/oscar-example.jpg" 
+                        alt="OSCAR schedule example" 
+                        className="w-full h-auto rounded border"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
+                          if (nextElement) {
+                            nextElement.style.display = 'block';
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
             <Input
               type="file"
               accept="application/pdf"
@@ -537,6 +587,19 @@ const App = () => {
           </div>
         </CardFooter>
       </Card>
+      <div className="text-center mt-8 text-sm text-muted-foreground">
+        <p>
+          View source on{' '}
+          <a
+            href="https://github.com/zilongpa/oscar2ics"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline font-medium"
+          >
+            GitHub
+          </a>
+        </p>
+      </div>
     </div>
   );
 };
