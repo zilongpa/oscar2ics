@@ -415,7 +415,7 @@ const App = () => {
             console.log("Processing location row:", row);
             if (currentCourse) {
               try {
-                [currentCourse.campus, currentCourse.location, currentCourse.room] = split3(row[0], ',').map(str => str.trim());
+                [currentCourse.campus, currentCourse.location, currentCourse.room] = split3(row.join(''), ',').map(str => str.trim());
               } catch {
               }
             }
