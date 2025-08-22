@@ -434,8 +434,8 @@ const App = () => {
       const location = [course.location, course.room].filter(Boolean).join(', ') || undefined;
 
       return {
-        title: course.title,
-        description: `${course.details}`,
+        title: course.details,
+        description: `${course.title}`,
         start: toICSArrayUTC(course.start),
         startInputType: 'utc' as const,
         startOutputType: 'utc' as const,
