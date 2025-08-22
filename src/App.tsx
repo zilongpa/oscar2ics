@@ -359,11 +359,12 @@ const App = () => {
     for (const row of validRows) {
       if ((row.length === 5 || row.length === 6) && row[0] !== "Title") {
         if (row.length === 6) {
-          row[5] = `${row[5]}${row[6]}`;
+          row[4] = `${row[4]}${row[5]}`;
         }
         i = 0;
         if (currentCourse) parsedCourses.push(currentCourse);
         currentDateStrings = row[4].split("-", 2).map(dateStr => dateStr.trim());
+        console.log("currentDateStrings:", currentDateStrings);
         currentCourse = {
           crn: Number(row[3]),
           title: row[0],
