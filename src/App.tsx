@@ -1,21 +1,21 @@
-import { useState, useRef } from 'react'
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
-GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-import './App.css'
-import { Input } from './components/ui/input';
-import type { TextItem, TextMarkedContent } from 'pdfjs-dist/types/src/display/api';
+import { useState, useRef } from "react";
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
+GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+import "./App.css";
+import { Input } from "./components/ui/input";
+import type {
+  TextItem,
+  TextMarkedContent,
+} from "pdfjs-dist/types/src/display/api";
 import {
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
-} from "@tanstack/react-table"
-import type {
-  ColumnDef,
-  SortingState,
-} from "@tanstack/react-table"
+} from "@tanstack/react-table";
+import type { ColumnDef, SortingState } from "@tanstack/react-table";
 
-import { Checkbox } from "@/components/ui/checkbox"
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -23,9 +23,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Button } from './components/ui/button';
-import { Label } from './components/ui/label';
+} from "@/components/ui/table";
+import { Button } from "./components/ui/button";
+import { Label } from "./components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   Card,
   CardContent,
@@ -41,9 +41,9 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import * as ics from 'ics'
-import { saveAs } from 'file-saver';
+} from "@/components/ui/card";
+import * as ics from "ics";
+import { saveAs } from "file-saver";
 import { DateTime } from "luxon";
 
 function isTextItem(item: TextItem | TextMarkedContent): item is TextItem {
@@ -52,7 +52,8 @@ function isTextItem(item: TextItem | TextMarkedContent): item is TextItem {
 
 function split3(str: string, sep: string): [string, string, string] {
   const parts = str.split(sep);
-  if (parts.length < 3) throw new Error("Input string does not contain at least three parts.");
+  if (parts.length < 3)
+    throw new Error("Input string does not contain at least three parts.");
 
   const left = parts.shift() as string;
   const right = parts.pop() as string;
@@ -60,10 +61,11 @@ function split3(str: string, sep: string): [string, string, string] {
 
   return [left, middle, right];
 }
-
-function toICSArrayUTC(dt: DateTime): [number, number, number, number, number] {
-  const u = dt.toUTC();
-  return [u.year, u.month, u.day, u.hour, u.minute];
+function toICSArrayLocal(
+  dt: DateTime
+): [number, number, number, number, number] {
+  const l = dt;
+  return [l.year, l.month, l.day, l.hour, l.minute];
 }
 
 function toRRuleUntilUTC(dt: DateTime): string {
@@ -71,21 +73,34 @@ function toRRuleUntilUTC(dt: DateTime): string {
 }
 
 const dayToByday: Record<string, string> = {
-  'Sunday': 'SU', 'Monday': 'MO', 'Tuesday': 'TU', 'Wednesday': 'WE',
-  'Thursday': 'TH', 'Friday': 'FR', 'Saturday': 'SA'
+  Sunday: "SU",
+  Monday: "MO",
+  Tuesday: "TU",
+  Wednesday: "WE",
+  Thursday: "TH",
+  Friday: "FR",
+  Saturday: "SA",
 };
 
 const dayToNumber: Record<string, number> = {
-  'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4,
-  'Friday': 5, 'Saturday': 6, 'Sunday': 7,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+  Sunday: 7,
 };
 
-function alignToFirstMatchingWeekday(startLocal: DateTime, days: string[]): DateTime {
+function alignToFirstMatchingWeekday(
+  startLocal: DateTime,
+  days: string[]
+): DateTime {
   if (!days || days.length === 0) return startLocal;
 
   const targetWeekdays = days
-    .map(d => dayToNumber[d])
-    .filter((n): n is number => typeof n === 'number');
+    .map((d) => dayToNumber[d])
+    .filter((n): n is number => typeof n === "number");
 
   let minDelta = Number.POSITIVE_INFINITY;
 
@@ -99,25 +114,25 @@ function alignToFirstMatchingWeekday(startLocal: DateTime, days: string[]): Date
 }
 
 export type Course = {
-  crn: number
-  title: string
-  details: string
-  start?: DateTime
-  end?: DateTime
-  until?: DateTime
-  day?: string[]
-  campus?: string
-  location?: string
-  room?: string
-}
+  crn: number;
+  title: string;
+  details: string;
+  start?: DateTime;
+  end?: DateTime;
+  until?: DateTime;
+  day?: string[];
+  campus?: string;
+  location?: string;
+  room?: string;
+};
 
 const initialData: Course[] = [
   {
     crn: -1,
     title: "Please upload a schedule",
-    details: "-"
-  }
-]
+    details: "-",
+  },
+];
 
 export const columns: ColumnDef<Course>[] = [
   {
@@ -134,7 +149,8 @@ export const columns: ColumnDef<Course>[] = [
     ),
     cell: ({ row }) => {
       const course = row.original;
-      const hasTimeAndDay = course.day && course.day.length > 0 && course.start && course.end;
+      const hasTimeAndDay =
+        course.day && course.day.length > 0 && course.start && course.end;
 
       return (
         <Checkbox
@@ -163,23 +179,25 @@ export const columns: ColumnDef<Course>[] = [
   {
     accessorKey: "crn",
     header: "CRN",
-    cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("crn")}</div>
-    ),
+    cell: ({ row }) => <div className="font-medium">{row.getValue("crn")}</div>,
   },
   {
     accessorKey: "day",
     header: "Schedule",
     cell: ({ row }) => {
       const days = row.getValue("day") as string[] | undefined;
-      const beginTime = row.original.start?.toFormat('hh:mm a');
-      const endTime = row.original.end?.toFormat('hh:mm a');
+      const beginTime = row.original.start?.toFormat("hh:mm a");
+      const endTime = row.original.end?.toFormat("hh:mm a");
       return (
         <div className="text-sm">
           <div className={!days || days.length === 0 ? "text-red-500" : ""}>
             {days?.join(", ") || "Unknown"}
           </div>
-          <div className={`text-muted-foreground ${!beginTime || !endTime ? "text-red-500" : ""}`}>
+          <div
+            className={`text-muted-foreground ${
+              !beginTime || !endTime ? "text-red-500" : ""
+            }`}
+          >
             {beginTime && endTime ? `${beginTime} - ${endTime}` : "Unknown"}
           </div>
         </div>
@@ -198,30 +216,42 @@ export const columns: ColumnDef<Course>[] = [
           <div className={!campus ? "text-red-500" : ""}>
             {campus || "Unknown"}
           </div>
-          <div className={`text-muted-foreground ${!location && !room ? "text-red-500" : ""}`}>
-            {location && room ? `${location}, Room ${room}` : location || room || "Unknown"}
+          <div
+            className={`text-muted-foreground ${
+              !location && !room ? "text-red-500" : ""
+            }`}
+          >
+            {location && room
+              ? `${location}, Room ${room}`
+              : location || room || "Unknown"}
           </div>
         </div>
       );
     },
   },
-]
+];
 
-export function DataTable({ data, onSelectionChange }: {
-  data: Course[],
-  onSelectionChange?: (selectedCourses: Course[]) => void
+export function DataTable({
+  data,
+  onSelectionChange,
+}: {
+  data: Course[];
+  onSelectionChange?: (selectedCourses: Course[]) => void;
 }) {
-  const [sorting, setSorting] = useState<SortingState>([{ id: "details", desc: false }])
-  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "details", desc: false },
+  ]);
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
 
   const handleSelectionChange = (updater: any) => {
-    const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
+    const newSelection =
+      typeof updater === "function" ? updater(rowSelection) : updater;
     setRowSelection(newSelection);
 
     if (onSelectionChange) {
       const selectedCourses = Object.keys(newSelection)
-        .filter(key => newSelection[key])
-        .map(index => data[parseInt(index)])
+        .filter((key) => newSelection[key])
+        .map((index) => data[parseInt(index)])
         .filter(Boolean);
       onSelectionChange(selectedCourses);
     }
@@ -236,13 +266,18 @@ export function DataTable({ data, onSelectionChange }: {
     onRowSelectionChange: handleSelectionChange,
     enableRowSelection: (row) => {
       const course = row.original;
-      return !!(course.day && course.day.length > 0 && course.start && course.end);
+      return !!(
+        course.day &&
+        course.day.length > 0 &&
+        course.start &&
+        course.end
+      );
     },
     state: {
       sorting,
       rowSelection,
     },
-  })
+  });
 
   return (
     <div className="w-full">
@@ -257,11 +292,11 @@ export function DataTable({ data, onSelectionChange }: {
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
                     </TableHead>
-                  )
+                  );
                 })}
               </TableRow>
             ))}
@@ -303,7 +338,7 @@ export function DataTable({ data, onSelectionChange }: {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 const App = () => {
@@ -312,20 +347,22 @@ const App = () => {
   const [filename, setFilename] = useState<string>("");
   const [selectedCourses, setSelectedCourses] = useState<Course[]>([]);
 
-  const handleExtractPDF = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExtractPDF = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
     const arrayBuffer = await file.arrayBuffer();
     const loadingTask = getDocument({ data: arrayBuffer });
     const pdf = await loadingTask.promise;
 
-    let allRows: string[][] = [];
+    const allRows: string[][] = [];
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
       const rowsMap: Record<string, { x: number; str: string }[]> = {};
 
-      content.items.filter(isTextItem).forEach(item => {
+      content.items.filter(isTextItem).forEach((item) => {
         const y = Math.round(item.transform[5]);
         (rowsMap[y] ??= []).push({ x: item.transform[4], str: item.str });
       });
@@ -333,17 +370,17 @@ const App = () => {
       Object.keys(rowsMap)
         .map(Number)
         .sort((a, b) => b - a)
-        .forEach(y => {
+        .forEach((y) => {
           const row = rowsMap[y]
             .sort((a, b) => a.x - b.x)
-            .map(cell => cell.str.trim())
+            .map((cell) => cell.str.trim())
             .filter(Boolean);
           if (row.length) allRows.push(row);
         });
     }
 
-    const headIdx = allRows.findIndex(row => row[0] === "Title");
-    const tailIdx = allRows.findIndex(row => row[0] === "Total Hours");
+    const headIdx = allRows.findIndex((row) => row[0] === "Title");
+    const tailIdx = allRows.findIndex((row) => row[0] === "Total Hours");
     console.log("headIdx:", headIdx, "tailIdx:", tailIdx);
     console.log("allRows:", allRows);
     if (headIdx == -1 || tailIdx == -1 || tailIdx <= headIdx) return;
@@ -371,12 +408,14 @@ const App = () => {
         }
         i = 0;
         if (currentCourse) parsedCourses.push(currentCourse);
-        currentDateStrings = row[4].split("-", 2).map(dateStr => dateStr.trim());
+        currentDateStrings = row[4]
+          .split("-", 2)
+          .map((dateStr) => dateStr.trim());
         console.log("currentDateStrings:", currentDateStrings);
         currentCourse = {
           crn: Number(row[3]),
           title: row[0],
-          details: row[1]
+          details: row[1],
         };
         console.log("currentCourse:", currentCourse);
       } else {
@@ -384,13 +423,16 @@ const App = () => {
           case 0:
             console.log("Processing day row:", row);
             if (currentCourse) {
-              currentCourse.day = row[0].split(',').map(str => str.trim());
+              currentCourse.day = row[0].split(",").map((str) => str.trim());
             }
             break;
           case 1:
             console.log("Processing time row:", row);
             if (currentCourse) {
-              const timeStrings = row.join('').split("-", 2).map(timeStr => timeStr.trim());
+              const timeStrings = row
+                .join("")
+                .split("-", 2)
+                .map((timeStr) => timeStr.trim());
 
               let startLocal = DateTime.fromFormat(
                 `${currentDateStrings[0]} ${timeStrings[0]}`,
@@ -407,11 +449,18 @@ const App = () => {
                 `${currentDateStrings[1]}`,
                 "MM/dd/yyyy",
                 { zone: "America/New_York" }
-              ).plus({ days: 1 }).minus({ milliseconds: 1 });
+              )
+                .plus({ days: 1 })
+                .minus({ milliseconds: 1 });
 
               if (currentCourse.day && currentCourse.day.length > 0) {
-                const alignedStart = alignToFirstMatchingWeekday(startLocal, currentCourse.day);
-                const diffDays = alignedStart.startOf('day').diff(startLocal.startOf('day'), 'days').days;
+                const alignedStart = alignToFirstMatchingWeekday(
+                  startLocal,
+                  currentCourse.day
+                );
+                const diffDays = alignedStart
+                  .startOf("day")
+                  .diff(startLocal.startOf("day"), "days").days;
                 startLocal = startLocal.plus({ days: diffDays });
                 endLocal = endLocal.plus({ days: diffDays });
               }
@@ -424,8 +473,13 @@ const App = () => {
             console.log("Processing location row:", row);
             if (currentCourse) {
               try {
-                [currentCourse.campus, currentCourse.location, currentCourse.room] = split3(row.join(''), ',').map(str => str.trim());
+                [
+                  currentCourse.campus,
+                  currentCourse.location,
+                  currentCourse.room,
+                ] = split3(row.join(""), ",").map((str) => str.trim());
               } catch {
+                /* empty */
               }
             }
         }
@@ -436,53 +490,57 @@ const App = () => {
   };
 
   const handleDownload = () => {
-
     if (selectedCourses.length === 0) {
-      alert('Please select at least one course to export.');
+      alert("Please select at least one course to export.");
       return;
     }
 
-    const events = selectedCourses.map(course => {
-      if (!course.day || !course.start || !course.end || !course.until) return null;
+    const events = selectedCourses
+      .map((course) => {
+        if (!course.day || !course.start || !course.end || !course.until)
+          return null;
 
-      const byDays = course.day.map(day => dayToByday[day]).join(',');
+        const byDays = course.day.map((day) => dayToByday[day]).join(",");
 
-      const untilString = toRRuleUntilUTC(course.until);
-      const rruleString = `FREQ=WEEKLY;BYDAY=${byDays};INTERVAL=1;UNTIL=${untilString}`;
-      const location = [course.location, course.room].filter(Boolean).join(', ') || undefined;
+        const untilString = toRRuleUntilUTC(course.until);
+        const rruleString = `FREQ=WEEKLY;BYDAY=${byDays};INTERVAL=1;UNTIL=${untilString}`;
+        const location =
+          [course.location, course.room].filter(Boolean).join(", ") ||
+          undefined;
 
-      return {
-        title: course.details,
-        description: `${course.title}`,
-        start: toICSArrayUTC(course.start),
-        startInputType: 'utc' as const,
-        startOutputType: 'utc' as const,
-        end: toICSArrayUTC(course.end),
-        endInputType: 'utc' as const,
-        endOutputType: 'utc' as const,
-        location: location,
-        recurrenceRule: rruleString,
-        transp: 'OPAQUE' as const,
-      };
-    }).filter((e): e is NonNullable<typeof e> => e !== null);
+        return {
+          title: course.details,
+          description: `${course.title}`,
+          start: toICSArrayLocal(course.start),
+          startInputType: "local" as const,
+          startOutputType: "local" as const,
+          end: toICSArrayLocal(course.end),
+          endInputType: "local" as const,
+          endOutputType: "local" as const,
+          location: location,
+          recurrenceRule: rruleString,
+          transp: "OPAQUE" as const,
+        };
+      })
+      .filter((e): e is NonNullable<typeof e> => e !== null);
 
     const headerAttributes = {
-      productId: 'OSCAR to ICS//EN',
-      method: 'PUBLISH',
-      calName: filename || 'Schedule'
+      productId: "OSCAR to ICS//EN",
+      method: "PUBLISH",
+      calName: filename || "Schedule",
     };
 
     const { error, value } = ics.createEvents(events, headerAttributes);
 
     if (error) {
-      console.error('Error generating ICS file:', error);
-      alert('Error generating ICS file, please check the console');
+      console.error("Error generating ICS file:", error);
+      alert("Error generating ICS file, please check the console");
       return;
     }
 
     if (value) {
-      const blob = new Blob([value], { type: 'text/calendar;charset=utf-8' });
-      const downloadFilename = `${filename || 'Schedule'}.ics`;
+      const blob = new Blob([value], { type: "text/calendar;charset=utf-8" });
+      const downloadFilename = `${filename || "Schedule"}.ics`;
       saveAs(blob, downloadFilename);
     }
   };
@@ -512,7 +570,9 @@ const App = () => {
                 </DialogTrigger>
                 <DialogContent className="max-w-md">
                   <DialogHeader>
-                    <DialogTitle>How to download your PDF schedule from OSCAR</DialogTitle>
+                    <DialogTitle>
+                      How to download your PDF schedule from OSCAR
+                    </DialogTitle>
                     <DialogDescription>
                       Follow these steps to get your schedule from OSCAR:
                     </DialogDescription>
@@ -522,21 +582,28 @@ const App = () => {
                       <ol className="list-decimal list-inside space-y-2">
                         <li>Log in to OSCAR</li>
                         <li>Click "Student"</li>
+                        <li>Click "Registration"</li>
                         <li>Click "View Registration Information"</li>
-                        <li>Inside the "Look Up a Schedule" tab, select the current semester from the drop-down</li>
-                        <li>Click the print icon at the top right and save the PDF</li>
+                        <li>
+                          Inside the "Look Up a Schedule" tab, select the
+                          current semester from the drop-down
+                        </li>
+                        <li>
+                          Click the print icon at the top right and save the PDF
+                        </li>
                       </ol>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg">
-                      <img 
-                        src="/oscar-example.jpg" 
-                        alt="OSCAR schedule example" 
+                      <img
+                        src="/oscar-example.jpg"
+                        alt="OSCAR schedule example"
                         className="w-full h-auto rounded border"
                         onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
+                          e.currentTarget.style.display = "none";
+                          const nextElement = e.currentTarget
+                            .nextElementSibling as HTMLElement;
                           if (nextElement) {
-                            nextElement.style.display = 'block';
+                            nextElement.style.display = "block";
                           }
                         }}
                       />
@@ -557,10 +624,7 @@ const App = () => {
             <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0 mb-6">
               2. Select one or more courses to export
             </h2>
-            <DataTable
-              data={courses}
-              onSelectionChange={setSelectedCourses}
-            />
+            <DataTable data={courses} onSelectionChange={setSelectedCourses} />
           </div>
         </CardContent>
         <CardFooter>
@@ -576,11 +640,7 @@ const App = () => {
                 value={filename}
                 onChange={(e) => setFilename(e.target.value)}
               />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleDownload}
-              >
+              <Button type="button" variant="outline" onClick={handleDownload}>
                 Download
               </Button>
             </div>
@@ -589,7 +649,7 @@ const App = () => {
       </Card>
       <div className="text-center mt-8 text-sm text-muted-foreground">
         <p>
-          View source on{' '}
+          View source on{" "}
           <a
             href="https://github.com/zilongpa/oscar2ics"
             target="_blank"
