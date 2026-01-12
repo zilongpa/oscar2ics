@@ -396,96 +396,165 @@ const App = () => {
     const validRows = allRows.slice(headIdx + 1, tailIdx);
     if (validRows.length === 0) return;
 
-    let currentCourse: Course | null = null;
     let currentDateStrings: string[] = [];
     const parsedCourses: Course[] = [];
 
-    let i = 0;
+    type Meeting = {
+      day?: string[];
+      timeStrings?: [string, string];
+      campus?: string;
+      location?: string;
+      room?: string;
+      dateStrings?: string[];
+    };
+
+    let baseCourse: Pick<Course, "crn" | "title" | "details"> | null = null;
+    let pendingMeeting: Meeting | null = null;
+
+    const dateRangeRegex = /\d{2}\/\d{2}\/\d{4}\s*-\s*\d{2}\/\d{2}\/\d{4}/;
+
+    const finalizeMeeting = () => {
+      if (!baseCourse || !pendingMeeting || !pendingMeeting.day) return;
+
+      const dateStrings =
+        pendingMeeting.dateStrings && pendingMeeting.dateStrings.length >= 2
+          ? pendingMeeting.dateStrings
+          : currentDateStrings.length >= 2
+          ? currentDateStrings
+          : [];
+
+      if (!pendingMeeting.timeStrings || dateStrings.length < 2) return;
+
+      const [startStr, endStr] = pendingMeeting.timeStrings;
+
+      let startLocal = DateTime.fromFormat(
+        `${dateStrings[0]} ${startStr}`,
+        "MM/dd/yyyy hh:mma",
+        { zone: "America/New_York" }
+      );
+      let endLocal = DateTime.fromFormat(
+        `${dateStrings[0]} ${endStr}`,
+        "MM/dd/yyyy hh:mma",
+        { zone: "America/New_York" }
+      );
+
+      const until = DateTime.fromFormat(dateStrings[1], "MM/dd/yyyy", {
+        zone: "America/New_York",
+      })
+        .plus({ days: 1 })
+        .minus({ milliseconds: 1 });
+
+      const alignedStart = alignToFirstMatchingWeekday(
+        startLocal,
+        pendingMeeting.day
+      );
+      const diffDays = alignedStart
+        .startOf("day")
+        .diff(startLocal.startOf("day"), "days").days;
+      startLocal = startLocal.plus({ days: diffDays });
+      endLocal = endLocal.plus({ days: diffDays });
+
+      parsedCourses.push({
+        ...baseCourse,
+        day: pendingMeeting.day,
+        start: startLocal,
+        end: endLocal,
+        until,
+        campus: pendingMeeting.campus,
+        location: pendingMeeting.location,
+        room: pendingMeeting.room,
+      });
+
+      pendingMeeting = null;
+    };
+
+    const isDayRow = (text: string) => {
+      const days = text.split(",").map((d) => d.trim());
+      return days.every((d) => dayToByday[d]);
+    };
+
+    const isTimeRow = (text: string) => /:\s*\d{2}\s*[AP]M/i.test(text);
+
     for (const row of validRows) {
       if ((row.length === 5 || row.length === 6) && row[0] !== "Title") {
         if (row.length === 6) {
           row[4] = `${row[4]}${row[5]}`;
         }
-        i = 0;
-        if (currentCourse) parsedCourses.push(currentCourse);
-        currentDateStrings = row[4]
-          .split("-", 2)
-          .map((dateStr) => dateStr.trim());
-        console.log("currentDateStrings:", currentDateStrings);
-        currentCourse = {
+        finalizeMeeting();
+        baseCourse = {
           crn: Number(row[3]),
           title: row[0],
           details: row[1],
         };
-        console.log("currentCourse:", currentCourse);
+        pendingMeeting = null;
+        currentDateStrings = row[4]
+          .split("-", 2)
+          .map((dateStr) => dateStr.trim());
       } else {
-        switch (i++) {
-          case 0:
-            console.log("Processing day row:", row);
-            if (currentCourse) {
-              currentCourse.day = row[0].split(",").map((str) => str.trim());
+        const text = row.join(" ").trim();
+        if (!text) continue;
+
+        if (dateRangeRegex.test(text)) {
+          finalizeMeeting();
+          currentDateStrings = text.split("-", 2).map((dateStr) => dateStr.trim());
+          pendingMeeting = { ...pendingMeeting, dateStrings: currentDateStrings };
+          continue;
+        }
+
+        if (isDayRow(text)) {
+          if (pendingMeeting && pendingMeeting.day && pendingMeeting.timeStrings) {
+            finalizeMeeting();
+          }
+          pendingMeeting = {
+            ...pendingMeeting,
+            day: text.split(",").map((str) => str.trim()),
+          };
+          continue;
+        }
+
+        if (isTimeRow(text)) {
+          const timeStrings = text
+            .replace(/\s+/g, "")
+            .split("-", 2)
+            .map((timeStr) => timeStr.trim()) as [string, string];
+          pendingMeeting = {
+            ...pendingMeeting,
+            timeStrings,
+          };
+          continue;
+        }
+
+        // Only treat as location if:
+        // 1. It has not been set yet (pendingMeeting.room is undefined)
+        // 2. AND either contains "*" (campus indicator) or is not a person name pattern
+        if (
+          row.length === 1 &&
+          text.includes(",") &&
+          !pendingMeeting?.room
+        ) {
+          // Check if this looks like a location (contains * or digits for room) 
+          // vs a name (no * and no digits after comma)
+          const hasAsterisk = text.includes("*");
+          const hasRoomNumber = /,\s*\d+/.test(text);
+          
+          if (hasAsterisk || hasRoomNumber) {
+            const meetingDraft: Meeting = { ...pendingMeeting };
+            try {
+              [meetingDraft.campus, meetingDraft.location, meetingDraft.room] = split3(
+                text,
+                ","
+              ).map((str) => str.trim());
+            } catch {
+              meetingDraft.location = text;
             }
-            break;
-          case 1:
-            console.log("Processing time row:", row);
-            if (currentCourse) {
-              const timeStrings = row
-                .join("")
-                .split("-", 2)
-                .map((timeStr) => timeStr.trim());
-
-              let startLocal = DateTime.fromFormat(
-                `${currentDateStrings[0]} ${timeStrings[0]}`,
-                "MM/dd/yyyy hh:mma",
-                { zone: "America/New_York" }
-              );
-              let endLocal = DateTime.fromFormat(
-                `${currentDateStrings[0]} ${timeStrings[1]}`,
-                "MM/dd/yyyy hh:mma",
-                { zone: "America/New_York" }
-              );
-
-              currentCourse.until = DateTime.fromFormat(
-                `${currentDateStrings[1]}`,
-                "MM/dd/yyyy",
-                { zone: "America/New_York" }
-              )
-                .plus({ days: 1 })
-                .minus({ milliseconds: 1 });
-
-              if (currentCourse.day && currentCourse.day.length > 0) {
-                const alignedStart = alignToFirstMatchingWeekday(
-                  startLocal,
-                  currentCourse.day
-                );
-                const diffDays = alignedStart
-                  .startOf("day")
-                  .diff(startLocal.startOf("day"), "days").days;
-                startLocal = startLocal.plus({ days: diffDays });
-                endLocal = endLocal.plus({ days: diffDays });
-              }
-
-              currentCourse.start = startLocal;
-              currentCourse.end = endLocal;
-            }
-            break;
-          case 2:
-            console.log("Processing location row:", row);
-            if (currentCourse) {
-              try {
-                [
-                  currentCourse.campus,
-                  currentCourse.location,
-                  currentCourse.room,
-                ] = split3(row.join(""), ",").map((str) => str.trim());
-              } catch {
-                /* empty */
-              }
-            }
+            pendingMeeting = meetingDraft;
+          }
+          // Otherwise skip (likely a professor name)
         }
       }
     }
-    if (currentCourse) parsedCourses.push(currentCourse);
+
+    finalizeMeeting();
     setCourses(parsedCourses);
   };
 
