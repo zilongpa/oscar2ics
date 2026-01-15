@@ -497,7 +497,7 @@ const App = () => {
         if (dateRangeRegex.test(text)) {
           finalizeMeeting();
           currentDateStrings = text.split("-", 2).map((dateStr) => dateStr.trim());
-          pendingMeeting = { ...pendingMeeting, dateStrings: currentDateStrings };
+          pendingMeeting = { ...(pendingMeeting || {}), dateStrings: currentDateStrings };
           continue;
         }
 
